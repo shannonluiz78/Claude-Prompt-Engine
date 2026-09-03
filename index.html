@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promptsmith — build a precise prompt for Claude</title>
+<meta name="description" content="Turn a rough ask into a well-structured Claude prompt. Runs entirely in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#18122a;
+    --panel:#231a3d;
+    --panel-2:#2d2250;
+    --border:#4a3a72;
+    --border-soft:#362a56;
+    --coral:#ff6f61;
+    --tangerine:#ffb347;
+    --mint:#5eead4;
+    --text:#f8f4ff;
+    --text-dim:#bcb0e0;
+    --danger:#ff5c7a;
+    --gradient:linear-gradient(135deg,var(--coral),var(--tangerine));
+    --font-display:'Baloo 2',sans-serif;
+    --font-body:'Plus Jakarta Sans',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+    --radius:22px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--coral);color:#18122a;}
+
+  .wrap{
+    max-width:700px;
+    margin:0 auto;
+    padding:40px 20px 90px;
+    position:relative;
+  }
+
+  header{
+    margin-bottom:36px;
+    position:relative;
+  }
+  header::before{
+    content:"";
+    position:absolute;
+    top:-60px;
+    left:-40px;
+    width:220px;
+    height:220px;
+    background:radial-gradient(circle,rgba(255,111,97,0.35),rgba(255,179,71,0.12) 60%,transparent 75%);
+    filter:blur(10px);
+    z-index:0;
+    pointer-events:none;
+  }
+  header h1{
+    position:relative;
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:2.1rem;
+    letter-spacing:-0.01em;
+    margin:0 0 8px;
+    background:var(--gradient);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    display:inline-block;
+  }
+  header .tagline{
+    position:relative;
+    color:var(--text-dim);
+    font-size:1rem;
+    font-weight:500;
+    margin:0;
+    max-width:48ch;
+  }
+
+  form{
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius);
+    padding:28px 24px;
+    box-shadow:0 20px 50px -25px rgba(255,111,97,0.35);
+  }
+
+  .field{margin-bottom:24px;}
+  .field:last-of-type{margin-bottom:0;}
+
+  .field label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.95rem;
+    color:var(--text);
+    margin-bottom:8px;
+  }
+  .field label .req{
+    color:#18122a;
+    background:var(--coral);
+    font-size:0.68rem;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:999px;
+  }
+  .field label .opt{
+    color:var(--text-dim);
+    background:var(--panel-2);
+    font-size:0.68rem;
+    font-weight:600;
+    padding:2px 8px;
+    border-radius:999px;
+  }
+
+  textarea, input[type=text], select{
+    width:100%;
+    background:var(--panel-2);
+    border:2px solid var(--border);
+    border-radius:14px;
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:0.97rem;
+    padding:12px 14px;
+    resize:vertical;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  textarea{min-height:72px;}
+  textarea:focus, input[type=text]:focus, select:focus{
+    outline:none;
+    border-color:var(--coral);
+    box-shadow:0 0 0 4px rgba(255,111,97,0.18);
+  }
+  ::placeholder{color:var(--text-dim); opacity:0.75;}
+
+  select{
+    appearance:none;
+    -webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23bcb0e0' stroke-width='1.5' fill='none' fill-rule='evenodd'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 14px center;
+    padding-right:34px;
+  }
+
+  .hint{
+    color:var(--text-dim);
+    font-size:0.85rem;
+    margin:7px 0 0;
+    line-height:1.45;
+  }
+
+  .row{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:22px;
+  }
+  @media (min-width:560px){
+    .row.split{grid-template-columns:1fr 1fr;}
+  }
+  .row.split .field{margin-bottom:0;}
+
+  .custom-input{margin-top:8px;}
+
+  .checkbox-field label{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:0.92rem;
+    color:var(--text);
+    cursor:pointer;
+  }
+  .checkbox-field input[type=checkbox]{
+    margin-top:3px;
+    accent-color:var(--mint);
+    width:18px;
+    height:18px;
+    flex-shrink:0;
+  }
+
+  .divider{
+    border:none;
+    height:1px;
+    margin:24px 0;
+    background:linear-gradient(90deg,transparent,var(--border-soft) 20%,var(--border-soft) 80%,transparent);
+  }
+
+  .actions{
+    display:flex;
+    gap:12px;
+    margin-top:28px;
+    flex-wrap:wrap;
+  }
+
+  button{
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.92rem;
+    border-radius:999px;
+    padding:13px 22px;
+    cursor:pointer;
+    border:2px solid transparent;
+    transition:transform .12s ease, opacity .15s ease, border-color .15s ease;
+  }
+  button:active{transform:scale(0.97);}
+
+  .btn-primary{
+    background:var(--gradient);
+    color:#2a1305;
+    flex:1;
+    box-shadow:0 12px 28px -10px rgba(255,111,97,0.55);
+  }
+  .btn-ghost{
+    background:transparent;
+    color:var(--text-dim);
+    border-color:var(--border);
+  }
+  .btn-ghost:hover{color:var(--text); border-color:var(--mint);}
+
+  .output{
+    margin-top:30px;
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius);
+    overflow:hidden;
+    box-shadow:0 20px 50px -28px rgba(94,234,212,0.3);
+  }
+  .output.hidden, .history.hidden{display:none;}
+
+  .output-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 20px;
+    background:var(--panel-2);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .filename{
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.9rem;
+    color:var(--text);
+  }
+  .output-actions{display:flex;gap:8px;}
+  .output-actions button{
+    padding:7px 14px;
+    font-size:0.8rem;
+    background:var(--panel);
+    color:var(--text-dim);
+    border-color:var(--border);
+  }
+  .output-actions button:hover{color:var(--mint); border-color:var(--mint);}
+  .output-actions button.copied{color:var(--mint); border-color:var(--mint);}
+
+  .checker{
+    padding:16px 20px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .checker.hidden{display:none;}
+  .checker-status{
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.92rem;
+  }
+  .checker-status.ok{color:var(--mint);}
+  .checker-status.warn{color:var(--tangerine);}
+  #checkerList{
+    list-style:none;
+    margin:12px 0 0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  #checkerList li{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    font-size:0.86rem;
+    line-height:1.5;
+    padding:10px 12px;
+    border-radius:12px;
+    color:var(--text);
+  }
+  #checkerList li.conflict{
+    background:rgba(255,92,122,0.12);
+    border:1px solid rgba(255,92,122,0.35);
+  }
+  #checkerList li.weak{
+    background:rgba(255,179,71,0.12);
+    border:1px solid rgba(255,179,71,0.35);
+  }
+  #checkerList li .icon{flex-shrink:0;}
+
+  #aiReviewSection{
+    padding:20px;
+    border-top:1px solid var(--border-soft);
+  }
+  .btn-ai{
+    background:transparent;
+    border:2px solid var(--mint);
+    color:var(--mint);
+    border-radius:999px;
+    padding:11px 20px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:0.88rem;
+    cursor:pointer;
+    transition:background .15s ease, transform .12s ease;
+  }
+  .btn-ai:hover{background:rgba(94,234,212,0.1);}
+  .btn-ai:active{transform:scale(0.97);}
+  .btn-ai:disabled{opacity:0.6; cursor:default;}
+
+  .error-text{color:var(--danger); margin-top:10px;}
+
+  .ai-badge{
+    display:inline-block;
+    background:rgba(94,234,212,0.15);
+    color:var(--mint);
+    font-size:0.7rem;
+    font-weight:700;
+    letter-spacing:0.02em;
+    padding:4px 10px;
+    border-radius:999px;
+    margin-bottom:12px;
+  }
+  #aiReviewResult{margin-top:18px;}
+  #aiReviewResult h3{
+    font-family:var(--font-body);
+    font-size:0.82rem;
+    font-weight:700;
+    color:var(--text-dim);
+    margin:18px 0 8px;
+  }
+  #aiReviewResult p{
+    font-size:0.92rem;
+    line-height:1.6;
+    color:var(--text);
+    margin:0;
+  }
+  #aiSuggestions{
+    margin:0;
+    padding-left:20px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  #aiSuggestions li{
+    font-size:0.9rem;
+    line-height:1.55;
+    color:var(--text);
+  }
+  .ai-sample{
+    background:var(--panel-2);
+    border:1px solid var(--border-soft);
+    border-radius:14px;
+    padding:14px 16px;
+    font-size:0.9rem;
+    line-height:1.6;
+    color:var(--text);
+    white-space:pre-wrap;
+  }
+
+  #promptPreview{
+    font-family:var(--font-mono);
+    font-size:0.85rem;
+    color:var(--text);
+    white-space:pre-wrap;
+    word-break:break-word;
+    margin:0;
+    padding:20px;
+    line-height:1.65;
+  }
+  .meta{
+    padding:0 20px 16px;
+    margin:0;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:0.8rem;
+    color:var(--text-dim);
+  }
+
+  .history{margin-top:30px;}
+  .history-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+  }
+  .history-header h2{
+    font-family:var(--font-display);
+    font-size:1.05rem;
+    font-weight:700;
+    color:var(--text);
+    margin:0;
+  }
+  .history-header button{
+    background:transparent;
+    color:var(--text-dim);
+    border-color:var(--border);
+    padding:6px 14px;
+    font-size:0.78rem;
+  }
+  .history-header button:hover{color:var(--danger); border-color:var(--danger);}
+
+  #historyList{
+    list-style:none;
+    margin:0;
+    padding:0;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  #historyList li{
+    background:var(--panel);
+    border:1px solid var(--border-soft);
+    border-radius:16px;
+    padding:12px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    cursor:pointer;
+    transition:border-color .15s ease, transform .12s ease;
+  }
+  #historyList li:hover{border-color:var(--coral); transform:translateY(-1px);}
+  #historyList .snippet{
+    font-size:0.88rem;
+    font-weight:500;
+    color:var(--text);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  #historyList .stamp{
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:0.76rem;
+    color:var(--text-dim);
+    flex-shrink:0;
+  }
+
+  footer{
+    margin-top:40px;
+    text-align:center;
+  }
+  footer p{
+    color:var(--text-dim);
+    font-size:0.82rem;
+    font-family:var(--font-body);
+    font-weight:500;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>promptsmith</h1>
+    <p class="tagline">Tell us what you need — get back a prompt Claude actually understands.</p>
+  </header>
+
+  <form id="promptForm">
+
+    <div class="field">
+      <label for="task">Task <span class="req">required</span></label>
+      <textarea id="task" required placeholder="e.g. Draft a follow-up email to a client who went quiet after a viewing"></textarea>
+      <p class="hint">What should Claude actually do? Name the deliverable, not just the topic.</p>
+    </div>
+
+    <div class="field">
+      <label for="context">Context <span class="opt">optional</span></label>
+      <textarea id="context" placeholder="e.g. They viewed a 4-room HDB in Sembawang two weeks ago, seemed keen, then went quiet"></textarea>
+      <p class="hint">Background Claude needs but wouldn't otherwise know.</p>
+    </div>
+
+    <div class="row split">
+      <div class="field">
+        <label for="persona">Persona <span class="opt">optional</span></label>
+        <input type="text" id="persona" placeholder="e.g. an experienced real estate agent">
+        <p class="hint">Who should Claude act as?</p>
+      </div>
+      <div class="field">
+        <label for="audience">Audience <span class="opt">optional</span></label>
+        <input type="text" id="audience" placeholder="e.g. a busy first-time buyer">
+        <p class="hint">Who's the output actually for?</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="row split">
+      <div class="field">
+        <label for="format">Output format</label>
+        <select id="format">
+          <option value="none">No preference</option>
+          <option value="prose">Prose</option>
+          <option value="bullets">Bulleted list</option>
+          <option value="numbered">Numbered steps</option>
+          <option value="table">Table</option>
+          <option value="code">Code</option>
+          <option value="json">JSON only</option>
+          <option value="markdown">Markdown report</option>
+          <option value="email">Email, ready to send</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <input type="text" id="formatCustom" class="custom-input" style="display:none" placeholder="Describe the format">
+      </div>
+      <div class="field">
+        <label for="length">Length</label>
+        <select id="length">
+          <option value="none">No preference</option>
+          <option value="brief">Brief</option>
+          <option value="moderate">Moderate</option>
+          <option value="detailed">Detailed / comprehensive</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <input type="text" id="lengthCustom" class="custom-input" style="display:none" placeholder="e.g. under 150 words">
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:22px;">
+      <label for="tone">Tone</label>
+      <select id="tone">
+        <option value="none">No preference</option>
+        <option value="professional">Professional</option>
+        <option value="casual">Casual, conversational</option>
+        <option value="technical">Precise, technical</option>
+        <option value="persuasive">Persuasive</option>
+        <option value="friendly">Warm, friendly</option>
+        <option value="academic">Formal, academic</option>
+        <option value="custom">Custom…</option>
+      </select>
+      <input type="text" id="toneCustom" class="custom-input" style="display:none" placeholder="Describe the tone">
+    </div>
+
+    <hr class="divider">
+
+    <div class="field">
+      <label for="examples">Examples <span class="opt">optional</span></label>
+      <textarea id="examples" placeholder="Paste 1–2 examples of the style or quality you want"></textarea>
+      <p class="hint">Nothing sharpens output like a real example.</p>
+    </div>
+
+    <div class="field">
+      <label for="constraints">Constraints <span class="opt">optional</span></label>
+      <textarea id="constraints" placeholder="e.g. Must mention the MOP date. Keep it to one email, no bullet points."></textarea>
+      <p class="hint">Hard rules — things that must be true of the output.</p>
+    </div>
+
+    <div class="field">
+      <label for="avoid">Avoid <span class="opt">optional</span></label>
+      <textarea id="avoid" placeholder="e.g. Don't sound pushy. Avoid generic real-estate jargon."></textarea>
+      <p class="hint">What a bad answer would get wrong.</p>
+    </div>
+
+    <hr class="divider">
+
+    <div class="field checkbox-field">
+      <label><input type="checkbox" id="reasoning"> Ask Claude to reason step-by-step before answering</label>
+    </div>
+    <div class="field checkbox-field" style="margin-top:12px;">
+      <label><input type="checkbox" id="xmlTags" checked> Structure the prompt with XML tags <span class="opt">(recommended for longer prompts)</span></label>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn-primary">Generate my prompt</button>
+      <button type="button" id="clearBtn" class="btn-ghost">Start over</button>
+    </div>
+  </form>
+
+  <section id="output" class="output hidden">
+    <div class="output-header">
+      <span class="filename">✨ your prompt</span>
+      <div class="output-actions">
+        <button id="copyBtn" type="button">copy</button>
+        <button id="downloadBtn" type="button">download</button>
+      </div>
+    </div>
+    <div id="checkerPanel" class="checker hidden">
+      <span id="checkerStatus" class="checker-status"></span>
+      <p class="hint" style="margin-top:4px;">Instant automatic check, runs in your browser — not a live AI review.</p>
+      <ul id="checkerList"></ul>
+    </div>
+    <pre id="promptPreview"></pre>
+    <p class="meta"><span id="wordCount"></span></p>
+
+    <div id="aiReviewSection">
+      <button id="aiReviewBtn" type="button" class="btn-ai">✨ Get Claude's real take</button>
+      <p id="aiReviewError" class="hint error-text hidden"></p>
+      <div id="aiReviewResult" class="hidden">
+        <span class="ai-badge">AI-generated review</span>
+        <p id="aiCritique"></p>
+        <h3>Suggestions</h3>
+        <ul id="aiSuggestions"></ul>
+        <h3>Sample response</h3>
+        <div id="aiSampleResponse" class="ai-sample"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="history" class="history hidden">
+    <div class="history-header">
+      <h2>recent</h2>
+      <button id="clearHistoryBtn" type="button">clear</button>
+    </div>
+    <ul id="historyList"></ul>
+  </section>
+
+  <footer>
+    <p>runs entirely in your browser — nothing is sent anywhere</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "promptsmith_history_v1";
+  var MAX_HISTORY = 10;
+
+  var form = document.getElementById("promptForm");
+  var outputSection = document.getElementById("output");
+  var previewEl = document.getElementById("promptPreview");
+  var wordCountEl = document.getElementById("wordCount");
+  var copyBtn = document.getElementById("copyBtn");
+  var downloadBtn = document.getElementById("downloadBtn");
+  var clearBtn = document.getElementById("clearBtn");
+  var historySection = document.getElementById("history");
+  var historyList = document.getElementById("historyList");
+  var clearHistoryBtn = document.getElementById("clearHistoryBtn");
+  var checkerPanel = document.getElementById("checkerPanel");
+  var checkerStatus = document.getElementById("checkerStatus");
+  var checkerList = document.getElementById("checkerList");
+  var aiReviewBtn = document.getElementById("aiReviewBtn");
+  var aiReviewResult = document.getElementById("aiReviewResult");
+  var aiReviewError = document.getElementById("aiReviewError");
+  var aiCritique = document.getElementById("aiCritique");
+  var aiSuggestions = document.getElementById("aiSuggestions");
+  var aiSampleResponse = document.getElementById("aiSampleResponse");
+  var AI_BTN_DEFAULT_TEXT = "✨ Get Claude's real take";
+
+  function resetAiReview(){
+    aiReviewResult.classList.add("hidden");
+    aiReviewError.classList.add("hidden");
+    aiReviewBtn.disabled = false;
+    aiReviewBtn.textContent = AI_BTN_DEFAULT_TEXT;
+  }
+
+  aiReviewBtn.addEventListener("click", function(){
+    var promptText = previewEl.textContent;
+    if(!promptText.trim()) return;
+
+    aiReviewBtn.disabled = true;
+    aiReviewBtn.textContent = "Asking Claude…";
+    aiReviewError.classList.add("hidden");
+    aiReviewResult.classList.add("hidden");
+
+    fetch("/api/review-prompt", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({prompt: promptText})
+    }).then(function(res){
+      return res.json().then(function(data){
+        if(!res.ok) throw new Error((data && data.error) || "Something went wrong.");
+        return data;
+      });
+    }).then(function(data){
+      aiCritique.textContent = data.critique || "";
+      aiSuggestions.innerHTML = "";
+      (data.suggestions || []).forEach(function(s){
+        var li = document.createElement("li");
+        li.textContent = s;
+        aiSuggestions.appendChild(li);
+      });
+      aiSampleResponse.textContent = data.sample_response || "";
+      aiReviewResult.classList.remove("hidden");
+    }).catch(function(err){
+      aiReviewError.textContent = err.message || "Couldn't reach Claude. Try again.";
+      aiReviewError.classList.remove("hidden");
+    }).then(function(){
+      aiReviewBtn.disabled = false;
+      aiReviewBtn.textContent = AI_BTN_DEFAULT_TEXT;
+    });
+  });
+
+  // show/hide "custom" text inputs beside their selects
+  function wireCustomToggle(selectId, inputId){
+    var select = document.getElementById(selectId);
+    var input = document.getElementById(inputId);
+    select.addEventListener("change", function(){
+      input.style.display = select.value === "custom" ? "block" : "none";
+      if(select.value === "custom") input.focus();
+    });
+  }
+  wireCustomToggle("format", "formatCustom");
+  wireCustomToggle("length", "lengthCustom");
+  wireCustomToggle("tone", "toneCustom");
+
+  var FORMAT_LABELS = {
+    prose: "clear, flowing prose",
+    bullets: "a bulleted list",
+    numbered: "a numbered, step-by-step list",
+    table: "a table",
+    code: "code, with comments where they help",
+    json: "valid JSON only — no surrounding text",
+    markdown: "a structured Markdown document with headings",
+    email: "a ready-to-send email, including a subject line"
+  };
+  var LENGTH_LABELS = {
+    brief: "Keep it brief — a couple of short paragraphs at most.",
+    moderate: "Aim for a moderate length — enough detail to be useful without padding.",
+    detailed: "Be thorough — comprehensive coverage matters more than brevity here."
+  };
+  var TONE_LABELS = {
+    professional: "professional",
+    casual: "casual, conversational",
+    technical: "precise, technical",
+    persuasive: "persuasive",
+    friendly: "warm, friendly",
+    academic: "formal, academic"
+  };
+
+  function escapeAngles(str){
+    return str.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function tag(name, content){
+    return "<" + name + ">\n" + escapeAngles(content) + "\n</" + name + ">";
+  }
+
+  function getFields(){
+    return {
+      task: document.getElementById("task").value.trim(),
+      context: document.getElementById("context").value.trim(),
+      persona: document.getElementById("persona").value.trim(),
+      audience: document.getElementById("audience").value.trim(),
+      format: document.getElementById("format").value,
+      formatCustom: document.getElementById("formatCustom").value.trim(),
+      length: document.getElementById("length").value,
+      lengthCustom: document.getElementById("lengthCustom").value.trim(),
+      tone: document.getElementById("tone").value,
+      toneCustom: document.getElementById("toneCustom").value.trim(),
+      examples: document.getElementById("examples").value.trim(),
+      constraints: document.getElementById("constraints").value.trim(),
+      avoid: document.getElementById("avoid").value.trim(),
+      reasoning: document.getElementById("reasoning").checked,
+      xmlTags: document.getElementById("xmlTags").checked
+    };
+  }
+
+  function setFields(f){
+    document.getElementById("task").value = f.task || "";
+    document.getElementById("context").value = f.context || "";
+    document.getElementById("persona").value = f.persona || "";
+    document.getElementById("audience").value = f.audience || "";
+    document.getElementById("format").value = f.format || "none";
+    document.getElementById("formatCustom").value = f.formatCustom || "";
+    document.getElementById("length").value = f.length || "none";
+    document.getElementById("lengthCustom").value = f.lengthCustom || "";
+    document.getElementById("tone").value = f.tone || "none";
+    document.getElementById("toneCustom").value = f.toneCustom || "";
+    document.getElementById("examples").value = f.examples || "";
+    document.getElementById("constraints").value = f.constraints || "";
+    document.getElementById("avoid").value = f.avoid || "";
+    document.getElementById("reasoning").checked = !!f.reasoning;
+    document.getElementById("xmlTags").checked = !!f.xmlTags;
+    document.getElementById("formatCustom").style.display = f.format === "custom" ? "block" : "none";
+    document.getElementById("lengthCustom").style.display = f.length === "custom" ? "block" : "none";
+    document.getElementById("toneCustom").style.display = f.tone === "custom" ? "block" : "none";
+  }
+
+  function buildPrompt(f){
+    var xml = f.xmlTags;
+    var parts = [];
+
+    if(f.persona){
+      parts.push(xml ? tag("role", "You are " + f.persona + ".") : "You are " + f.persona + ".");
+    }
+
+    parts.push(xml ? tag("task", f.task) : f.task);
+
+    if(f.context){
+      parts.push(xml ? tag("context", f.context) : "Context: " + f.context);
+    }
+
+    if(f.audience){
+      var audienceText = "This is for: " + f.audience + ".";
+      parts.push(xml ? tag("audience", audienceText) : audienceText);
+    }
+
+    var formatBits = [];
+    if(f.format === "custom" && f.formatCustom){
+      formatBits.push("Format the response as " + f.formatCustom + ".");
+    } else if(FORMAT_LABELS[f.format]){
+      formatBits.push("Format the response as " + FORMAT_LABELS[f.format] + ".");
+    }
+    if(f.length === "custom" && f.lengthCustom){
+      formatBits.push("Keep the response to about " + f.lengthCustom + ".");
+    } else if(LENGTH_LABELS[f.length]){
+      formatBits.push(LENGTH_LABELS[f.length]);
+    }
+    if(f.tone === "custom" && f.toneCustom){
+      formatBits.push("Use a " + f.toneCustom + " tone.");
+    } else if(TONE_LABELS[f.tone]){
+      formatBits.push("Use a " + TONE_LABELS[f.tone] + " tone.");
+    }
+    if(formatBits.length){
+      var formatText = formatBits.join(" ");
+      parts.push(xml ? tag("output_format", formatText) : formatText);
+    }
+
+    if(f.constraints){
+      parts.push(xml ? tag("constraints", f.constraints) : "Constraints: " + f.constraints);
+    }
+
+    if(f.avoid){
+      parts.push(xml ? tag("avoid", f.avoid) : "Avoid: " + f.avoid);
+    }
+
+    if(f.examples){
+      var exText = "Example of the style or quality wanted:\n" + f.examples;
+      parts.push(xml ? tag("example", f.examples) : exText);
+    }
+
+    if(f.reasoning){
+      parts.push("Think through this step-by-step before giving your final answer. Show your reasoning, then clearly present the result.");
+    }
+
+    return parts.join("\n\n");
+  }
+
+  function wordCount(str){
+    var words = str.trim().split(/\s+/).filter(Boolean).length;
+    return words + " words · " + str.length + " characters";
+  }
+
+  function wc(str){
+    return str.trim() ? str.trim().split(/\s+/).filter(Boolean).length : 0;
+  }
+
+  // find a shared 3-word phrase between two fields — used to flag likely contradictions
+  function shingles(str, n){
+    var words = str.trim().split(/\s+/);
+    var out = [];
+    for(var i = 0; i + n <= words.length; i++){
+      out.push(words.slice(i, i + n).join(" ").toLowerCase());
+    }
+    return out;
+  }
+  function sharedPhrase(a, b){
+    var sa = shingles(a, 3);
+    var sb = shingles(b, 3);
+    for(var i = 0; i < sa.length; i++){
+      if(sb.indexOf(sa[i]) !== -1) return sa[i];
+    }
+    return null;
+  }
+
+  var VAGUE_STARTERS = /^(help me|can you|i need|i want|do something|make it|fix|sort out)\b/i;
+  var DANGLING_PRONOUNS = /\b(this|that|it|they|them|these|those)\b/i;
+
+  // Rule-based checks — runs instantly in the browser. Not a live AI review;
+  // it's a fixed set of heuristics for common weak spots and contradictions.
+  function checkPrompt(f){
+    var issues = [];
+    var taskWords = wc(f.task);
+
+    if(taskWords > 0 && taskWords < 5){
+      issues.push({type:"weak", text:"Your task is only " + taskWords + " word" + (taskWords === 1 ? "" : "s") + " long. Naming the deliverable and its purpose usually helps — e.g. swap \u201Cwrite about pricing\u201D for \u201Cwrite a one-page pricing explainer for new customers.\u201D"});
+    }
+
+    if(VAGUE_STARTERS.test(f.task.trim())){
+      issues.push({type:"weak", text:"Your task opens with a vague request. Starting with a concrete action tends to work better — e.g. \u201CDraft\u2026\u201D, \u201CSummarize\u2026\u201D, \u201CCompare\u2026\u201D."});
+    }
+
+    if(DANGLING_PRONOUNS.test(f.task) && !f.context){
+      issues.push({type:"weak", text:"Your task refers to \u201Cthis / it / they\u201D but Context is empty — Claude won't know what that's pointing to."});
+    }
+
+    if(f.length === "detailed" && (taskWords + wc(f.context)) < 12){
+      issues.push({type:"weak", text:"You asked for a detailed, comprehensive response but there isn't much for Claude to draw on yet. More context usually does more for depth than the length setting alone."});
+    }
+
+    if(f.format === "json" && f.reasoning){
+      issues.push({type:"conflict", text:"\u201CJSON only\u201D output and \u201Cthink step-by-step\u201D work against each other — reasoning text isn't valid JSON. Turn one off, or ask for the reasoning inside a field of the JSON object."});
+    }
+
+    if(f.constraints && f.avoid){
+      var overlap = sharedPhrase(f.constraints, f.avoid);
+      if(overlap){
+        issues.push({type:"conflict", text:"Constraints and Avoid both contain \u201C" + overlap + "\u201D — worth checking these aren't contradicting each other."});
+      }
+    }
+
+    return issues;
+  }
+
+  function renderChecker(issues){
+    checkerList.innerHTML = "";
+    checkerPanel.classList.remove("hidden");
+    if(issues.length === 0){
+      checkerStatus.textContent = "Looks solid — no obvious gaps or conflicts";
+      checkerStatus.className = "checker-status ok";
+      return;
+    }
+    checkerStatus.textContent = issues.length + (issues.length === 1 ? " thing" : " things") + " worth a look:";
+    checkerStatus.className = "checker-status warn";
+    issues.forEach(function(issue){
+      var li = document.createElement("li");
+      li.className = issue.type;
+      var icon = document.createElement("span");
+      icon.className = "icon";
+      icon.textContent = issue.type === "conflict" ? "\u26A0\uFE0F" : "\uD83D\uDCA1";
+      var text = document.createElement("span");
+      text.textContent = issue.text;
+      li.appendChild(icon);
+      li.appendChild(text);
+      checkerList.appendChild(li);
+    });
+  }
+
+  function loadHistory(){
+    try{
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function saveHistory(entries){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }catch(e){ /* storage unavailable — fail silently */ }
+  }
+
+  function timestamp(){
+    var d = new Date();
+    var pad = function(n){ return n < 10 ? "0" + n : n; };
+    return pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function renderHistory(){
+    var entries = loadHistory();
+    if(entries.length === 0){
+      historySection.classList.add("hidden");
+      return;
+    }
+    historySection.classList.remove("hidden");
+    historyList.innerHTML = "";
+    entries.forEach(function(entry, idx){
+      var li = document.createElement("li");
+      var snippet = document.createElement("span");
+      snippet.className = "snippet";
+      snippet.textContent = entry.fields.task || "(untitled)";
+      var stamp = document.createElement("span");
+      stamp.className = "stamp";
+      stamp.textContent = entry.time;
+      li.appendChild(snippet);
+      li.appendChild(stamp);
+      li.addEventListener("click", function(){
+        setFields(entry.fields);
+        showOutput(entry.prompt);
+        renderChecker(checkPrompt(entry.fields));
+        resetAiReview();
+        if(typeof window.scrollTo === "function"){
+          window.scrollTo({top: 0, behavior: "smooth"});
+        }
+      });
+      historyList.appendChild(li);
+    });
+  }
+
+  function addToHistory(fields, prompt){
+    var entries = loadHistory();
+    entries.unshift({fields: fields, prompt: prompt, time: timestamp()});
+    if(entries.length > MAX_HISTORY) entries = entries.slice(0, MAX_HISTORY);
+    saveHistory(entries);
+    renderHistory();
+  }
+
+  function showOutput(promptText){
+    previewEl.textContent = promptText;
+    wordCountEl.textContent = wordCount(promptText);
+    outputSection.classList.remove("hidden");
+    copyBtn.textContent = "copy";
+    copyBtn.classList.remove("copied");
+  }
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    var fields = getFields();
+    if(!fields.task){
+      document.getElementById("task").focus();
+      return;
+    }
+    var prompt = buildPrompt(fields);
+    showOutput(prompt);
+    renderChecker(checkPrompt(fields));
+    resetAiReview();
+    addToHistory(fields, prompt);
+    if(typeof outputSection.scrollIntoView === "function"){
+      outputSection.scrollIntoView({behavior: "smooth", block: "start"});
+    }
+  });
+
+  clearBtn.addEventListener("click", function(){
+    form.reset();
+    document.getElementById("xmlTags").checked = true;
+    document.getElementById("formatCustom").style.display = "none";
+    document.getElementById("lengthCustom").style.display = "none";
+    document.getElementById("toneCustom").style.display = "none";
+    outputSection.classList.add("hidden");
+    checkerPanel.classList.add("hidden");
+    resetAiReview();
+    document.getElementById("task").focus();
+  });
+
+  copyBtn.addEventListener("click", function(){
+    var text = previewEl.textContent;
+    function showCopied(){
+      copyBtn.textContent = "copied";
+      copyBtn.classList.add("copied");
+      setTimeout(function(){
+        copyBtn.textContent = "copy";
+        copyBtn.classList.remove("copied");
+      }, 1500);
+    }
+    function fallbackCopy(){
+      try{
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        showCopied();
+      }catch(e){
+        copyBtn.textContent = "couldn't copy";
+        setTimeout(function(){ copyBtn.textContent = "copy"; }, 1500);
+      }
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(showCopied).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+  });
+
+  downloadBtn.addEventListener("click", function(){
+    var blob = new Blob([previewEl.textContent], {type: "text/plain"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "prompt.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  clearHistoryBtn.addEventListener("click", function(){
+    saveHistory([]);
+    renderHistory();
+  });
+
+  renderHistory();
+})();
+</script>
+</body>
+</html>
